@@ -529,6 +529,7 @@ class GameGui(ttk.Frame):
         self.__game_played = False
         self.__game_terminated = False
         self.__pijersi_state = rules.PijersiState()
+        self.__pijersi_intermediate_state = None
         self.__searcher = [None, None]
         self.__searcher_max_time = None
         self.__searcher_start_time = None
@@ -1590,6 +1591,16 @@ class GameGui(ttk.Frame):
 
                     self.__progressbar['value'] = 100.
 
+                    if len(action_simple_name) > 7:
+                        intermediate_move = action_simple_name[0:5]
+                        intermediate_action = self.__pijersi_state.get_action_by_simple_name(intermediate_move)
+                        self.__pijersi_intermediate_state = self.__pijersi_state.take_action(intermediate_action)
+                        self.__pijersi_intermediate_state.show()
+                        self.__draw_state()
+                        self.__canvas.update()
+                        time.sleep(1)
+                        self.__pijersi_intermediate_state = None
+
                 else:
                     ready_for_next_turn = False
 
@@ -2482,6 +2493,8 @@ class GameGui(ttk.Frame):
 
         if self.__cmc_pijersi_state is not None:
             pijersi_state = self.__cmc_pijersi_state
+        elif self.__pijersi_intermediate_state is not None:
+            pijersi_state = self.__pijersi_intermediate_state
         else:
             pijersi_state = self.__pijersi_state
 
