@@ -295,7 +295,11 @@ class HexagonLineColor(enum.Enum):
     NORMAL = 'black'
     HIGHLIGHT = 'white'
     HIGHLIGHT_PLAYED_BY_WHITE = 'white'
+    HIGHLIGHT_TRAVELLED_BY_WHITE = rgb_color_as_hexadecimal((217, 199, 193))
+
     HIGHLIGHT_PLAYED_BY_BLACK = 'black'
+    HIGHLIGHT_TRAVELLED_BY_BLACK = rgb_color_as_hexadecimal((90, 90, 90))
+   
 
 
 class GraphicalHexagon:
@@ -317,7 +321,9 @@ class GraphicalHexagon:
         self.color = color
 
         self.highlighted_as_played_by_white = False
+        self.highlighted_as_travelled_by_white = False
         self.highlighted_as_played_by_black = False
+        self.highlighted_as_travelled_by_black = False
         self.highlighted_as_selectable = False
         self.highlighted_as_cube = False
         self.highlighted_as_stack = False
@@ -408,7 +414,9 @@ class GraphicalHexagon:
             hexagon.highlighted_as_stack = False
             hexagon.highlighted_as_destination = False
             hexagon.highlighted_as_played_by_white = False
+            hexagon.highlighted_as_travelled_by_white = False
             hexagon.highlighted_as_played_by_black = False
+            hexagon.highlighted_as_travelled_by_black = False
 
     @staticmethod
     def reset_highlights_as_selectable():
@@ -430,7 +438,9 @@ class GraphicalHexagon:
     def reset_highlights_as_played():
         for hexagon in GraphicalHexagon.all:
             hexagon.highlighted_as_played_by_white = False
+            hexagon.highlighted_as_travelled_by_white = False
             hexagon.highlighted_as_played_by_black = False
+            hexagon.highlighted_as_travelled_by_black = False
 
     @staticmethod
     def show_all():
@@ -2056,35 +2066,45 @@ class GameGui(ttk.Frame):
             player_index = (turn_index + 1) % 2
 
         if played_action_name is not None:
-            played_hexagons = self.__get_destination_hexagons(played_action_name)
+            played_hexagons = self.__get_travelled_hexagons(played_action_name)
 
             if player_index == 0:
                 for hexagon in played_hexagons:
-                    hexagon.highlighted_as_played_by_white = True
+                    hexagon[0].highlighted_as_played_by_white = hexagon[1]
+                    hexagon[0].highlighted_as_travelled_by_white = not hexagon[1]
 
             elif player_index == 1:
                 for hexagon in played_hexagons:
-                    hexagon.highlighted_as_played_by_black = True
+                    hexagon[0].highlighted_as_played_by_black = hexagon[1]
+                    hexagon[0].highlighted_as_travelled_by_black = not hexagon[1]
+    
+    def __get_travelled_hexagons(self, action_name):
+        """
+        Return travelled hexagons. For each, indicate if it is a destination hexagon.
+        """
 
-    def __get_destination_hexagons(self, action_name):
+        # Protection against empty action_name
+        if len(action_name) == 0:
+            return []
 
+        # Clean action name and split it in a list
         simple_action_name = action_name.replace("!", "")
+        hexagons = [GraphicalHexagon.get(hexagon_name) for hexagon_name in re.split("-|=", simple_action_name)]
 
-        if len(simple_action_name) == 5:
-            hexagon_names = [simple_action_name[3:5]]
+        travelled_hexagons = []
 
-        elif len(simple_action_name) == 8:
-            if simple_action_name[5] == "=":
-                hexagon_names = [simple_action_name[6:8]]
+        # First hexagon is the starting point
+        travelled_hexagons.append((hexagons[0] , False))
 
-            elif simple_action_name[5] == "-":
-                hexagon_names = [simple_action_name[3:5], simple_action_name[6:8]]
-
+        # If there is just a final hexagon, garanty that is a destination one
+        if len(hexagons) == 2:
+            travelled_hexagons.append((hexagons[1], True))
+        # If there is two hexagons, have to disciminate between cases (start = final - final VS start - intermediate = final )
         else:
-            hexagon_names = []
+            travelled_hexagons.append((hexagons[1], simple_action_name[5] == "-"))
+            travelled_hexagons.append((hexagons[2], True))
 
-        destination_hexagons = [GraphicalHexagon.get(hexagon_name) for hexagon_name in hexagon_names]
-        return destination_hexagons
+        return travelled_hexagons
 
 
     def __read_setup(self, setup_items):
@@ -2568,8 +2588,16 @@ class GameGui(ttk.Frame):
                 polygon_line_color = HexagonLineColor.HIGHLIGHT_PLAYED_BY_WHITE.value
                 line_width_scaling = 3
 
+            elif hexagon.highlighted_as_travelled_by_white:
+                polygon_line_color = HexagonLineColor.HIGHLIGHT_TRAVELLED_BY_WHITE.value
+                line_width_scaling = 3
+            
             elif hexagon.highlighted_as_played_by_black:
                 polygon_line_color = HexagonLineColor.HIGHLIGHT_PLAYED_BY_BLACK.value
+                line_width_scaling = 4
+            
+            elif hexagon.highlighted_as_travelled_by_black:
+                polygon_line_color = HexagonLineColor.HIGHLIGHT_TRAVELLED_BY_BLACK.value
                 line_width_scaling = 4
 
         if easy_mode and hexagon.highlighted_as_destination:
